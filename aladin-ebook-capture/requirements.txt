@@ -1,0 +1,10 @@
+# Core (capture on Windows desktop with Aladin PC viewer open)
+mss>=9.0.1
+pyautogui>=0.9.54
+PyYAML>=6.0.1
+
+# Optional PDF export
+img2pdf>=0.5.1
+
+# Dev / tests (no display required)
+pytest>=8.0.0
