@@ -1,0 +1,23 @@
+book:
+  title: "smoke-test"
+  pages: 2
+
+capture:
+  region:
+    left: 0
+    top: 0
+    right: 800
+    bottom: 1000
+  delay_ms: 200
+  start_delay_sec: 0
+  next_page: key:right
+
+output:
+  dir: ./output
+  images: true
+  pdf: false
+  zero_pad: 4
+
+safety:
+  min_region_px: 50
+  personal_use_notice: true

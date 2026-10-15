@@ -1,0 +1,40 @@
+# Aladin ebook capture — copy to config.yaml and edit.
+# Personal use of purchased ebooks only. Official viewer screenshots; no DRM bypass.
+
+book:
+  # Used in output filenames and folder name
+  title: "example-book"
+  # Total pages to capture (must match what you will turn through)
+  pages: 10
+
+capture:
+  # Absolute screen coordinates of the page content (pixels)
+  # Tip: run `python -m aladin_capture calibrate` on Windows to fill these in
+  region:
+    left: 100
+    top: 80
+    right: 1200
+    bottom: 1600
+  # Delay after each page turn before the next screenshot (milliseconds)
+  delay_ms: 400
+  # Countdown before the first capture (seconds) — use this to focus the viewer
+  start_delay_sec: 3
+  # How to advance pages in the Aladin PC viewer
+  # key:right | key:left | key:pagedown | click
+  next_page: key:right
+
+output:
+  # Directory for this run (created if missing)
+  dir: ./output
+  # Save PNG page images
+  images: true
+  # Build a single PDF from captured PNGs after capture
+  pdf: true
+  # Zero-pad page numbers in filenames (e.g. page-0001.png)
+  zero_pad: 4
+
+safety:
+  # Refuse to run if region width/height is below this (guards bad coords)
+  min_region_px: 50
+  # Print personal-use reminder at start
+  personal_use_notice: true
