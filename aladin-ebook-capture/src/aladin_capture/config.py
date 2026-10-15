@@ -9,7 +9,10 @@ from typing import Any
 import yaml
 
 
-ALLOWED_NEXT_PAGE = frozenset({"key:right", "key:left", "key:pagedown", "click"})
+ALLOWED_NEXT_PAGE = frozenset(
+    {"key:right", "key:left", "key:pagedown", "key:space", "click"}
+)
+ALLOWED_COORD_SPACE = frozenset({"logical", "physical"})
 
 
 @dataclass(frozen=True)
@@ -50,6 +53,10 @@ class CaptureConfig:
     zero_pad: int
     min_region_px: int
     personal_use_notice: bool
+    # macOS Retina: calibrate/pyautogui use logical points; mss uses physical pixels
+    coordinate_space: str = "logical"
+    # None => auto-detect at capture time; else explicit scale (e.g. 2.0)
+    retina_scale: float | None = None
 
     @property
     def book_dir(self) -> Path:
@@ -65,6 +72,18 @@ def _require_mapping(data: Any, label: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ConfigError(f"{label} must be a mapping")
     return data
+
+
+def _parse_retina_scale(raw: Any) -> float | None:
+    if raw is None or raw == "auto":
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise ConfigError("capture.retina_scale must be 'auto' or a positive number") from exc
+    if value <= 0:
+        raise ConfigError("capture.retina_scale must be > 0")
+    return value
 
 
 def load_config(path: Path | str) -> CaptureConfig:
@@ -105,9 +124,12 @@ def load_config(path: Path | str) -> CaptureConfig:
     except (KeyError, TypeError, ValueError) as exc:
         raise ConfigError("book.pages must be a positive integer") from exc
 
+    # macOS Aladin desktop viewer default: Right arrow
     next_page = str(capture.get("next_page", "key:right")).strip().lower()
-    delay_ms = int(capture.get("delay_ms", 400))
+    delay_ms = int(capture.get("delay_ms", 500))
     start_delay_sec = float(capture.get("start_delay_sec", 3))
+    coordinate_space = str(capture.get("coordinate_space", "logical")).strip().lower()
+    retina_scale = _parse_retina_scale(capture.get("retina_scale", "auto"))
     out_dir = Path(str(output.get("dir", "./output")))
     save_images = bool(output.get("images", True))
     save_pdf = bool(output.get("pdf", True))
@@ -128,6 +150,8 @@ def load_config(path: Path | str) -> CaptureConfig:
         zero_pad=zero_pad,
         min_region_px=min_region_px,
         personal_use_notice=personal_use_notice,
+        coordinate_space=coordinate_space,
+        retina_scale=retina_scale,
     )
     validate_config(cfg)
     return cfg
@@ -148,6 +172,13 @@ def validate_config(cfg: CaptureConfig) -> list[str]:
         errors.append(
             f"capture.next_page must be one of {sorted(ALLOWED_NEXT_PAGE)}, got {cfg.next_page!r}"
         )
+    if cfg.coordinate_space not in ALLOWED_COORD_SPACE:
+        errors.append(
+            f"capture.coordinate_space must be one of {sorted(ALLOWED_COORD_SPACE)}, "
+            f"got {cfg.coordinate_space!r}"
+        )
+    if cfg.retina_scale is not None and cfg.retina_scale <= 0:
+        errors.append("capture.retina_scale must be > 0 when set")
     if cfg.region.width < cfg.min_region_px or cfg.region.height < cfg.min_region_px:
         errors.append(
             f"capture.region is too small ({cfg.region.width}x{cfg.region.height}); "
@@ -159,6 +190,10 @@ def validate_config(cfg: CaptureConfig) -> list[str]:
         errors.append("output.images and output.pdf cannot both be false")
     if cfg.zero_pad < 1 or cfg.zero_pad > 8:
         errors.append("output.zero_pad must be between 1 and 8")
+    if not cfg.save_images or not cfg.save_pdf:
+        warnings.append(
+            "Project default is both PNG and PDF; one of output.images/pdf is false"
+        )
 
     if errors:
         raise ConfigError("; ".join(errors))

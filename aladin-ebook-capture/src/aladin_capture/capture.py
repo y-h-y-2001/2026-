@@ -1,7 +1,7 @@
 """Region screenshot + page-advance loop.
 
 Adapted from p0tat0-113/ebookAutoCapture (Tkinter GUI Capture class).
-This module is GUI-free so CLI / agents can drive it.
+Retargeted for macOS + official 알라딘 eBook desktop viewer.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Callable
 
 from .config import CaptureConfig
+from .macos import is_macos, region_to_mss, resolve_scale
 
 
 PERSONAL_USE = (
@@ -32,6 +33,8 @@ def _advance_page(mode: str) -> None:
         pyautogui.press("left")
     elif mode == "key:pagedown":
         pyautogui.press("pagedown")
+    elif mode == "key:space":
+        pyautogui.press("space")
     elif mode == "click":
         pyautogui.click()
     else:
@@ -44,6 +47,12 @@ def page_filename(cfg: CaptureConfig, page: int) -> str:
 
 def dry_run_plan(cfg: CaptureConfig) -> dict:
     """Describe what capture would do without touching the screen."""
+    scale_info = resolve_scale(cfg.retina_scale)
+    mss_region = region_to_mss(
+        cfg.region,
+        coordinate_space=cfg.coordinate_space,
+        scale=scale_info.scale,
+    )
     pages = [
         {
             "page": i,
@@ -54,9 +63,15 @@ def dry_run_plan(cfg: CaptureConfig) -> dict:
     ]
     return {
         "mode": "dry-run",
+        "target_os": "macOS",
+        "host_is_macos": is_macos(),
+        "viewer": "알라딘 eBook (Mac App Store desktop app)",
         "book_title": cfg.title,
         "pages": cfg.pages,
-        "region": asdict(cfg.region),
+        "region_config": asdict(cfg.region),
+        "coordinate_space": cfg.coordinate_space,
+        "retina_scale": scale_info.to_dict(),
+        "mss_region_physical": mss_region,
         "delay_ms": cfg.delay_ms,
         "start_delay_sec": cfg.start_delay_sec,
         "next_page": cfg.next_page,
@@ -65,6 +80,11 @@ def dry_run_plan(cfg: CaptureConfig) -> dict:
         "save_pdf": cfg.save_pdf,
         "planned_files": pages,
         "notice": PERSONAL_USE,
+        "mac_blocker_if_remote": (
+            None
+            if is_macos()
+            else "Run capture on the user's Mac; this host cannot drive the Aladin window."
+        ),
     }
 
 
@@ -79,8 +99,8 @@ def run_capture(
 ) -> Path:
     """Capture pages into cfg.book_dir. Returns the book directory path.
 
-    Inject grab/advance/sleep for tests. On a real run, grab uses mss and
-    advance uses pyautogui (Windows desktop with Aladin viewer focused).
+    Inject grab/advance/sleep for tests. On a real run, grab uses mss (physical
+    pixels) and advance uses pyautogui with the Aladin Mac viewer focused.
     """
     log = log or (lambda msg: print(msg, file=sys.stderr))
 
@@ -92,8 +112,26 @@ def run_capture(
         log(json.dumps(plan, indent=2, ensure_ascii=False))
         return cfg.book_dir
 
+    if grab is None and not is_macos():
+        raise RuntimeError(
+            "Real capture targets macOS with 알라딘 eBook open. "
+            "This host is not macOS. Use dry-run / validate-config here, "
+            "or run capture on the user's Mac."
+        )
+
     book_dir = cfg.book_dir
     book_dir.mkdir(parents=True, exist_ok=True)
+
+    scale_info = resolve_scale(cfg.retina_scale)
+    mss_region = region_to_mss(
+        cfg.region,
+        coordinate_space=cfg.coordinate_space,
+        scale=scale_info.scale,
+    )
+    log(
+        f"Display scale={scale_info.scale} ({scale_info.source}); "
+        f"coordinate_space={cfg.coordinate_space}; mss_region={mss_region}"
+    )
 
     if grab is None:
         grab = _mss_grab_png
@@ -101,7 +139,10 @@ def run_capture(
         advance = _advance_page
 
     if cfg.start_delay_sec > 0:
-        log(f"Starting in {cfg.start_delay_sec}s — focus the Aladin viewer window now.")
+        log(
+            f"Starting in {cfg.start_delay_sec}s — focus the 알라딘 eBook window now "
+            "(Screen Recording + Accessibility must be enabled)."
+        )
         sleep(cfg.start_delay_sec)
 
     written: list[str] = []
@@ -111,7 +152,7 @@ def run_capture(
         name = page_filename(cfg, page)
         out_path = book_dir / name
         if cfg.save_images or cfg.save_pdf:
-            png = grab(cfg.region.as_mss_monitor())
+            png = grab(mss_region)
             out_path.write_bytes(png)
             written.append(name)
             log(f"Captured {page}/{cfg.pages} -> {out_path}")
@@ -124,15 +165,22 @@ def run_capture(
         "book_title": cfg.title,
         "pages_requested": cfg.pages,
         "files": written,
-        "region": asdict(cfg.region),
+        "region_config": asdict(cfg.region),
+        "coordinate_space": cfg.coordinate_space,
+        "retina_scale": scale_info.to_dict(),
+        "mss_region_physical": mss_region,
         "next_page": cfg.next_page,
+        "target_os": "macOS",
+        "viewer": "알라딘 eBook",
         "started_utc": started,
         "finished_utc": datetime.now(timezone.utc).isoformat(),
         "notice": PERSONAL_USE,
         "upstream_credit": "Capture loop adapted from p0tat0-113/ebookAutoCapture",
     }
     manifest_path = book_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     log(f"Wrote {manifest_path}")
     return book_dir
 

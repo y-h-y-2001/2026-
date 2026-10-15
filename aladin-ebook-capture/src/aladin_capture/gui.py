@@ -1,7 +1,7 @@
 """Optional Tkinter UI (ported from upstream ebookAutoCapture).
 
-Prefer the CLI + YAML config for AI-agent runs. This GUI remains useful
-for interactive coordinate picking on Windows.
+Prefer the CLI + YAML config for AI-agent runs on macOS. This GUI remains
+useful for interactive coordinate picking (logical points on Retina).
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ def main() -> None:
     from pathlib import Path
 
     root = Tk()
-    root.title("Aladin Ebook Capture")
+    root.title("Aladin Ebook Capture (macOS)")
     root.resizable(width=False, height=False)
 
     x1 = y1 = x2 = y2 = 0
@@ -30,17 +30,17 @@ def main() -> None:
     pages = IntVar(value=10)
     name = StringVar(value="book")
     dir_path = StringVar(value=str(Path.cwd() / "output"))
-    speed = IntVar(value=400)
+    speed = IntVar(value=500)
     move_opt = IntVar(value=0)
     progress = DoubleVar(value=0.0)
 
     frame = ttk.Frame(root, padding="8 8 8 8")
     frame.grid(column=0, row=0, sticky=(N, W, E, S))
 
-    ttk.Label(frame, text="Personal use · official Aladin viewer screenshots").grid(
+    ttk.Label(frame, text="Personal use · 알라딘 eBook (Mac) screenshots").grid(
         column=1, row=0, columnspan=3, sticky=W
     )
-    ttk.Label(frame, text="Click 좌표 설정, move mouse, press Space").grid(
+    ttk.Label(frame, text="Click 좌표 설정, move mouse, press Space (logical points)").grid(
         column=1, row=1, columnspan=3, sticky=W
     )
 
@@ -115,6 +115,8 @@ def main() -> None:
             zero_pad=4,
             min_region_px=50,
             personal_use_notice=True,
+            coordinate_space="logical",
+            retina_scale=None,
         )
 
         def job() -> None:

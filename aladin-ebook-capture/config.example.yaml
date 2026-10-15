@@ -1,5 +1,8 @@
-# Aladin ebook capture — copy to config.yaml and edit.
+# Aladin ebook capture (macOS) — copy to config.yaml and edit.
 # Personal use of purchased ebooks only. Official viewer screenshots; no DRM bypass.
+#
+# Viewer: 알라딘 eBook desktop app (Mac App Store, macOS 12+).
+# Not a Windows VM. Enable Screen Recording + Accessibility for Terminal/Cursor.
 
 book:
   # Used in output filenames and folder name
@@ -8,27 +11,29 @@ book:
   pages: 10
 
 capture:
-  # Absolute screen coordinates of the page content (pixels)
-  # Tip: run `python -m aladin_capture calibrate` on Windows to fill these in
+  # Region in logical points (what `calibrate` / pyautogui returns).
+  # On Retina, mss physical pixels = logical × retina_scale.
+  coordinate_space: logical
+  retina_scale: auto   # auto | 1 | 2 | 2.0 ...
   region:
     left: 100
     top: 80
-    right: 1200
-    bottom: 1600
+    right: 900
+    bottom: 1200
   # Delay after each page turn before the next screenshot (milliseconds)
-  delay_ms: 400
-  # Countdown before the first capture (seconds) — use this to focus the viewer
+  delay_ms: 500
+  # Countdown before the first capture — use this to focus 알라딘 eBook
   start_delay_sec: 3
-  # How to advance pages in the Aladin PC viewer
-  # key:right | key:left | key:pagedown | click
+  # Page turn for Aladin Mac desktop viewer (try key:right first; key:space also common)
+  # key:right | key:left | key:pagedown | key:space | click
   next_page: key:right
 
 output:
   # Directory for this run (created if missing)
   dir: ./output
-  # Save PNG page images
+  # Save PNG page images (required for library + AI ingestion)
   images: true
-  # Build a single PDF from captured PNGs after capture
+  # Merge PNGs into a single PDF after capture
   pdf: true
   # Zero-pad page numbers in filenames (e.g. page-0001.png)
   zero_pad: 4

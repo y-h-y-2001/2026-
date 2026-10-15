@@ -3,6 +3,8 @@ book:
   pages: 2
 
 capture:
+  coordinate_space: logical
+  retina_scale: 2.0
   region:
     left: 0
     top: 0
@@ -15,7 +17,7 @@ capture:
 output:
   dir: ./output
   images: true
-  pdf: false
+  pdf: true
   zero_pad: 4
 
 safety:
